@@ -1,0 +1,32 @@
+{
+  "name": "rabbit/chrome-headless",
+  "description": "rabbit chrome-headless",
+  "type": "library",
+  "authors": [
+    {
+      "name": "albert",
+      "email": "63851587@qq.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4.0",
+    "rabbit/base": "dev-master",
+    "chrome-php/chrome": "^0.9.0"
+  },
+  "require-dev": {
+    "swoole/ide-helper": "@dev",
+    "phpunit/phpunit": "*"
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "albert",
+      "email": "63851587@qq.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Rabbit\\Chrome\\Headless\\": "src/"
+    }
+  }
+}
