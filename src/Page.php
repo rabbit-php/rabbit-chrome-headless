@@ -125,6 +125,7 @@ class Page
                 App::debug("Finish awaiting event $method");
                 return $data;
             }
+            usleep(100 * 1000);
         }
         throw new RuntimeException("Awaiting event $method at {$timeout}s timeout, the {$i} times event is " . ($res->data['method'] ?? 'null'));
     }

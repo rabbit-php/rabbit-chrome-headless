@@ -171,19 +171,52 @@ function mockPluginsAndMimeTypes() {
 try {
     const isPluginArray = navigator.plugins instanceof PluginArray
     const hasPlugins = isPluginArray && navigator.plugins.length > 0
-    if (!(isPluginArray && hasPlugins)) { mockPluginsAndMimeTypes() }
+    if (!(isPluginArray && hasPlugins)) {
+        mockPluginsAndMimeTypes()
+    }
 
     Object.defineProperties(navigator, {
         'appVersion': { get: () => '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' },
         'userAgent': { get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' },
-        'languages': { get: () => ['zh-CN', 'zh'] },
-        'webkitTemporaryStorage': { get: () => window.webkitStorageInfo }
+        'languages': { get: () => ['zh-CN', 'zh', 'en'] },
+        'deviceMemory': { get: () => 8 },
+        'hardwareConcurrency': { get: () => 8 },
+        'platform': { get: () => 'Win32' }
     });
     Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 });
-    delete navigator.__proto__.webdriver; window.navigator.chrome = { runtime: {} };
-    delete window.webkitStorageInfo;
-    const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters) => {
-        return parameters.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : originalQuery(parameters);
+    window.navigator.chrome = { runtime: {} };
+    // webdriver
+    const newProto = navigator.__proto__;
+    delete newProto.webdriver; //删除 navigator.webdriver字段
+    navigator.__proto__ = newProto;
+
+    // chrome
+    window.chrome = {};
+    window.chrome.app = {
+        InstallState: 'hehe',
+        RunningState: 'haha',
+        getDetails: 'xixi',
+        getIsInstalled: 'ohno',
+    };
+    window.chrome.csi = function () { };
+    window.chrome.loadTimes = function () { };
+    window.chrome.runtime = function () { };
+
+    // permissions
+    const originalQuery = window.navigator.permissions.query; //notification伪装
+    window.navigator.permissions.query = (parameters) => parameters.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : originalQuery(parameters);
+
+    //inc
+    const getParameter = WebGLRenderingContext.getParameter;
+    WebGLRenderingContext.prototype.getParameter = function (parameter) {
+        // UNMASKED_VENDOR_WEBGL
+        if (parameter === 37445) {
+            return 'Google Inc. (Intel)';
+        }
+        // UNMASKED_RENDERER_WEBGL
+        if (parameter === 37446) {
+            return 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11-27.20.100.8681)';
+        }
+        return getParameter(parameter);
     };
 } catch (err) { }

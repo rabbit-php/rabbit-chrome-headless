@@ -27,15 +27,16 @@ class Chrome
         ]);
     }
 
-    public function getPages(bool $refresh = false): array
+    public function getPages(bool $fixHeadless = true): array
     {
-        if (empty($this->pages) || $refresh) {
+        if (empty($this->pages)) {
             $response = $this->httpClient->post('/json/list');
             $pages = $response->getParsedJsonArray();
             foreach ($pages as $page) {
                 if (!array_key_exists($page['id'], $this->pages)) {
                     $page['timeout'] = $this->timeout;
-                    $this->pages[$page['id']] = new Page($page);
+                    $page['isNew'] = $page['url'] === 'about:blank' ? true : false;
+                    $this->pages[$page['id']] = new Page($page, $fixHeadless);
                 }
             }
         }
