@@ -13,7 +13,7 @@ use Swlib\Saber;
  */
 class Chrome
 {
-    private array $tabs = [];
+    private array $pages = [];
     private Saber $httpClient;
     private int $timeout = 30;
 
@@ -27,95 +27,71 @@ class Chrome
         ]);
     }
 
-    /**
-     * @param bool $refresh
-     * @return array
-     */
-    public function getTabs(bool $refresh = false): array
+    public function getPages(bool $refresh = false): array
     {
-        if (empty($this->tabs) || $refresh) {
+        if (empty($this->pages) || $refresh) {
             $response = $this->httpClient->post('/json/list');
-            $tabs = $response->getParsedJsonArray();
-            foreach ($tabs as $tab) {
-                if (!array_key_exists($tab['id'], $this->tabs)) {
-                    $tab['timeout'] = $this->timeout;
-                    $this->tabs[$tab['id']] = new Tab($tab);
+            $pages = $response->getParsedJsonArray();
+            foreach ($pages as $page) {
+                if (!array_key_exists($page['id'], $this->pages)) {
+                    $page['timeout'] = $this->timeout;
+                    $this->pages[$page['id']] = new Page($page);
                 }
             }
         }
-        return $this->tabs;
+        return $this->pages;
     }
 
-    /**
-     * @param string $url
-     * @param bool $autoOpen
-     * @return Tab|null
-     * @throws \Exception
-     */
-    public function checkUrl(string $url, bool $autoOpen = true): ?Tab
+    public function checkUrl(string $url, bool $autoOpen = true, bool $fixHeadless = true): ?page
     {
-        $emptyTab = [];
-        foreach ($this->getTabs() as $tab) {
-            if (parse_url($tab->url, PHP_URL_HOST) === $url) {
-                return $tab;
-            } elseif ($tab->url === 'about:blank') {
-                $emptyTab[] = $tab;
+        $emptypage = [];
+        $urlArr = explode(',', $url);
+        foreach ($this->getPages() as $page) {
+            if (in_array(parse_url($page->url, PHP_URL_HOST), $urlArr)) {
+                return $page;
+            } elseif ($page->url === 'about:blank') {
+                $emptypage[] = $page;
             }
         }
-        if (!empty($emptyTab)) {
-            return array_shift($emptyTab);
+        if (!empty($emptypage)) {
+            return array_shift($emptypage);
         }
-        return $autoOpen ? $this->open() : null;
+        return $autoOpen ? $this->open($fixHeadless) : null;
     }
 
-    /**
-     * @param string|null $url
-     * @return Tab|null
-     * @throws \Exception
-     */
-    public function open(?string $url = null): ?Tab
+    public function open(bool $fixHeadless = true): ?Page
     {
-        App::debug("Opening new tab" . ($url !== null ? " url=$url" : ''));
-        $response = $this->httpClient->post('/json/new' . ($url !== null ? "?" . urlencode($url) : ""));
+        App::debug("Opening new page");
+        $response = $this->httpClient->post('/json/new');
         if ($response->getStatusCode() === 200) {
-            $tab = $response->getParsedJsonArray();
-            $tab['timeout'] = $this->timeout;
-            $this->tabs[$tab['id']] = new Tab($tab);
-            App::debug("Opened new tab" . ($url !== null ? " url=$url" : ''));
-            return $this->tabs[$tab['id']];
+            $page = $response->getParsedJsonArray();
+            $page['timeout'] = $this->timeout;
+            $page['isNew'] = true;
+            $this->pages[$page['id']] = new Page($page, $fixHeadless);
+            App::debug("Opened new page");
+            return $this->pages[$page['id']];
         }
-        App::error("Open new tab" . ($url !== null ? " url=$url" : '') . " failed error=" . (string)$response->getBody());
+        App::error("Open new page" . " failed error=" . (string)$response->getBody());
         return null;
     }
 
-    /**
-     * @return array
-     */
     public function version(): array
     {
         $response = $this->httpClient->post('/json/version');
         return $response->getParsedJsonArray();
     }
 
-    /**
-     * @param string $id
-     * @return bool
-     */
-    public function activateTabById(string $id): bool
+    public function activatePageById(string $id): bool
     {
         $response = $this->httpClient->post("/json/activate/{$id}");
         return $response->getStatusCode() === 200;
     }
 
-    /**
-     * @param string $id
-     * @return bool
-     */
-    public function closeTabById(string $id): bool
+    public function closePageById(string $id): bool
     {
         $response = $this->httpClient->post("/json/close/{$id}");
         if ($response->getStatusCode() === 200) {
-            unset($this->tabs[$id]);
+            unset($this->pages[$id]);
             return true;
         }
         return false;

@@ -172,5 +172,18 @@ try {
     const isPluginArray = navigator.plugins instanceof PluginArray
     const hasPlugins = isPluginArray && navigator.plugins.length > 0
     if (!(isPluginArray && hasPlugins)) { mockPluginsAndMimeTypes() }
-    Object.defineProperties(navigator, { 'appVersion': { get: () => '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' }, 'userAgent': { get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' }, 'languages': { get: () => ['zh-CN', 'zh'] } }); Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 }); delete navigator.__proto__.webdriver; window.navigator.chrome = { runtime: {} }; const originalQuery = window.navigator.permissions.query; window.navigator.permissions.query = (parameters) => { return parameters.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : originalQuery(parameters); };
+
+    Object.defineProperties(navigator, {
+        'appVersion': { get: () => '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' },
+        'userAgent': { get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.72 Safari/537.36' },
+        'languages': { get: () => ['zh-CN', 'zh'] },
+        'webkitTemporaryStorage': { get: () => window.webkitStorageInfo }
+    });
+    Object.defineProperty(navigator.connection, 'rtt', { get: () => 50 });
+    delete navigator.__proto__.webdriver; window.navigator.chrome = { runtime: {} };
+    delete window.webkitStorageInfo;
+    const originalQuery = window.navigator.permissions.query;
+    window.navigator.permissions.query = (parameters) => {
+        return parameters.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : originalQuery(parameters);
+    };
 } catch (err) { }
