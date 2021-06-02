@@ -27,7 +27,7 @@ class Chrome
         ]);
     }
 
-    public function getPages(bool $fixHeadless = true): array
+    public function getPages(): array
     {
         if (empty($this->pages)) {
             $response = $this->httpClient->post('/json/list');
@@ -35,15 +35,14 @@ class Chrome
             foreach ($pages as $page) {
                 if (!array_key_exists($page['id'], $this->pages)) {
                     $page['timeout'] = $this->timeout;
-                    $page['isNew'] = $page['url'] === 'about:blank' ? true : false;
-                    $this->pages[$page['id']] = new Page($page, $fixHeadless);
+                    $this->pages[$page['id']] = new Page($page);
                 }
             }
         }
         return $this->pages;
     }
 
-    public function checkUrl(string $url, bool $autoOpen = true, bool $fixHeadless = true): ?page
+    public function checkUrl(string $url, bool $autoOpen = true): ?page
     {
         $emptypage = [];
         $urlArr = explode(',', $url);
@@ -57,18 +56,17 @@ class Chrome
         if (!empty($emptypage)) {
             return array_shift($emptypage);
         }
-        return $autoOpen ? $this->open($fixHeadless) : null;
+        return $autoOpen ? $this->open() : null;
     }
 
-    public function open(bool $fixHeadless = true): ?Page
+    private function open(): ?Page
     {
         App::debug("Opening new page");
         $response = $this->httpClient->post('/json/new');
         if ($response->getStatusCode() === 200) {
             $page = $response->getParsedJsonArray();
             $page['timeout'] = $this->timeout;
-            $page['isNew'] = true;
-            $this->pages[$page['id']] = new Page($page, $fixHeadless);
+            $this->pages[$page['id']] = new Page($page);
             App::debug("Opened new page");
             return $this->pages[$page['id']];
         }

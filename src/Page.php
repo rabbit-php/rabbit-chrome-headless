@@ -25,11 +25,10 @@ class Page
     private ?string $description = null;
     private string $type;
     private ?string $faviconUrl = null;
-    private bool $isNew = false;
 
     private array $msgs = [];
 
-    public function __construct(array $attributes, bool $fixHeadless = true)
+    public function __construct(array $attributes)
     {
         foreach ($attributes as $name => $value) {
             $this->$name = $value;
@@ -39,10 +38,6 @@ class Page
             ['ws', 'wss'],
             $this->webSocketDebuggerUrl
         ));
-        $this->execute("Page.enable");
-        if ($this->isNew && $fixHeadless) {
-            $this->fixHeadless();
-        }
     }
 
     public function __get($name)
@@ -53,11 +48,13 @@ class Page
         throw new InvalidArgumentException("page has no property $name!");
     }
 
-    public function fixHeadless(): void
+    public function fixHeadless(): self
     {
+        $this->execute("Page.enable");
         $this->execute("Page.addScriptToEvaluateOnNewDocument", [
             'source' => trim(file_get_contents(__DIR__ . '/headless.js'))
         ]);
+        return $this;
     }
 
     public function setPreScript(string $script): void
