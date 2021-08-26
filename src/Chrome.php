@@ -91,6 +91,7 @@ class Chrome
         $response = $this->httpClient->post("/json/close/{$id}");
         if ($response->getStatusCode() === 200) {
             unset($this->pages[$id]);
+            $this->pages = array_slice($this->pages, 0, null, true);
             return true;
         }
         return false;
