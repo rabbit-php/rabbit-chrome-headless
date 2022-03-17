@@ -122,7 +122,6 @@ class Page
                 App::debug("Finish awaiting event $method");
                 return $data;
             }
-            usleep(100 * 1000);
         }
         throw new RuntimeException("Awaiting event $method at {$timeout}s timeout, the {$i} times event is " . ($res->data['method'] ?? 'null'));
     }
@@ -174,10 +173,12 @@ class Page
         return $this;
     }
 
-    public function navigateOrReload(string $url, bool $ignoreCache = true): self
+    public function navigateOrReload(string $url, bool $ignoreCache = true, bool $auto = true): self
     {
         if ($this->url !== $url) {
             return $this->navigate($url);
+        } elseif ($auto) {
+            return $this;
         } else {
             return $this->reload($ignoreCache);
         }
