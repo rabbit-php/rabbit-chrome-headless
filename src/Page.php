@@ -164,10 +164,21 @@ class Page
         return $this;
     }
 
-    public function content(string $cmd = 'document.documentElement.innerHTML'): string
+    public function content(string $cmd = 'document.documentElement.innerHTML', int $wait = 0): string
     {
-        $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
-        return $res->getResult()['result']['value'] ?? '';
+        if ($wait > 0) {
+            $now = time();
+            while (time() - $now < $wait) {
+                $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
+                if ($ret = $res->getResult()['result']['value'] ?? false) {
+                    return $ret;
+                }
+                usleep(500 * 1000);
+            }
+        } else {
+            $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
+            return $res->getResult()['result']['value'] ?? '';
+        }
     }
 
     public function waitForSelector(string $query, int $timeout = 30): ?Dom
