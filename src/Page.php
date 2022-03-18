@@ -175,6 +175,7 @@ class Page
                 }
                 usleep(500 * 1000);
             }
+            return '';
         } else {
             $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
             return $res->getResult()['result']['value'] ?? '';
