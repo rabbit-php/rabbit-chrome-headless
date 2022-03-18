@@ -4,28 +4,12 @@ declare(strict_types=1);
 
 namespace Rabbit\Chrome\Headless;
 
-use Rabbit\Base\Exception\InvalidArgumentException;
-
 class Message
 {
-    private int $id;
-    private string $method;
-    private array $params = [];
-    private array $result = [];
+    private ?array $result = null;
 
-    public function __construct(int $id, string $method, array $params = [])
+    public function __construct(public readonly int $id, public readonly string $method, public readonly array $params = [])
     {
-        $this->id = $id;
-        $this->method = $method;
-        $this->params = $params;
-    }
-
-    public function __get($name)
-    {
-        if (property_exists($this, $name)) {
-            return $this->$name;
-        }
-        throw new InvalidArgumentException("Message has no property $name!");
     }
 
     public function getRequest(): string
@@ -42,7 +26,7 @@ class Message
         $this->result = $result['result'];
     }
 
-    public function getResult(): array
+    public function getResult(): ?array
     {
         return $this->result;
     }
