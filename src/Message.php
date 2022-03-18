@@ -17,7 +17,12 @@ class Message
         return json_encode([
             'id' => $this->id,
             'method' => $this->method,
-            'params' => $this->params,
+            'params' => [
+                'awaitPromise' => true,
+                'returnByValue' => true,
+                'userGesture' => true,
+                ...$this->params
+            ],
         ]);
     }
 

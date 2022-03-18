@@ -137,15 +137,15 @@ class Page
         return $this;
     }
 
-    public function waitForNavigation(int $timeout = 30): array
+    public function waitForNavigation(int $timeout = 30): ?array
     {
         $now = time();
         while (time() - $now < $timeout) {
             $flag = true;
             foreach ($this->msgs as $msg) {
                 if ($msg->method === 'Page.navigate' || $msg->method === 'Page.reload') {
-                    if ($msg->getResult() !== null) {
-                        break 2;
+                    if (null !== $ret = $msg->getResult()) {
+                        return $ret;
                     }
                     $flag = false;
                 }
@@ -155,7 +155,7 @@ class Page
             }
             usleep(500 * 1000);
         }
-        return [];
+        return null;
     }
 
     public function evaluate(string $expression): self
@@ -164,7 +164,7 @@ class Page
         return $this;
     }
 
-    public function content(string $cmd = 'document.documentElement.innerHTML', int $wait = 0): string
+    public function content(string $cmd = 'document.documentElement.innerHTML', int $wait = 0): ?string
     {
         if ($wait > 0) {
             $now = time();
@@ -175,10 +175,10 @@ class Page
                 }
                 usleep(500 * 1000);
             }
-            return '';
+            return null;
         } else {
             $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
-            return $res->getResult()['result']['value'] ?? '';
+            return $res->getResult()['result']['value'] ?? null;
         }
     }
 

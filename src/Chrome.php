@@ -56,7 +56,14 @@ class Chrome
         if (!empty($emptypage)) {
             return array_shift($emptypage);
         }
-        return $autoOpen ? $this->open() : null;
+        if (null === $page = $autoOpen ? $this->open() : null) {
+            return null;
+        }
+        $page->evaluate('Page.enable');
+        $page->evaluate('Network.enable');
+        $page->evaluate('Runtime.enable');
+        $page->evaluate('Page.setLifecycleEventsEnabled', ['enabled' => true]);
+        return $page;
     }
 
     private function open(): ?Page
