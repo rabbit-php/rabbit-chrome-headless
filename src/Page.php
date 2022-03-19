@@ -74,6 +74,11 @@ class Page
         }
     }
 
+    public function clear(): void
+    {
+        $this->msgs = [];
+    }
+
     public function execute(string $method, array $params = []): ?Message
     {
         $msg = new Message(++$this->msgId, $method, $params);
