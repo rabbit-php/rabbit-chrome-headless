@@ -8,11 +8,16 @@ class Message
 {
     private ?array $result = null;
 
-    public function __construct(public readonly int $id, public readonly string $method, public readonly array $params = [])
+    private static int $mid = 0;
+
+    public readonly int $id;
+
+    public function __construct(public readonly string $method, public readonly array $params = [])
     {
+        $this->id = self::$mid++;
     }
 
-    public function getRequest(): string
+    public function __toString(): string
     {
         return json_encode([
             'id' => $this->id,

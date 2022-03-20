@@ -19,7 +19,6 @@ class Page
     private string $id;
     private string $title;
     private string $url;
-    private int $msgId = 0;
     private WebSocket $client;
     private string $webSocketDebuggerUrl;
     private string $devtoolsFrontendUrl;
@@ -75,16 +74,10 @@ class Page
         }
     }
 
-    public function clear(): void
-    {
-        $this->msgs = [];
-    }
-
     public function execute(string $method, array $params = []): ?Message
     {
-        $msg = new Message(++$this->msgId, $method, $params);
-        $this->msgs[$msg->id] = $msg;
-        $data = $msg->getRequest();
+        $msg = new Message($method, $params);
+        $data = (string)$msg;
         App::debug("Execute $method with params=$data", "Headless");
         $this->client->push($data);
         $start = time();
@@ -98,10 +91,10 @@ class Page
             if (isset($data['error'])) {
                 App::error("Execute $method error msg=$res->data", "Headless");
             }
-            if (isset($data['id']) && array_key_exists($data['id'], $this->msgs)) {
-                $this->msgs[$data['id']]->setResult($data);
+            if (isset($data['id']) && $data['id'] === $msg->id) {
+                $msg->setResult($data);
                 App::debug("Finish $method with result=$res->data", "Headless");
-                return $this->msgs[$data['id']];
+                return $msg;
             }
         }
         throw new RuntimeException("Awaiting execute $method at {$this->timeout}s timeout");

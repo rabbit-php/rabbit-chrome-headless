@@ -7,10 +7,6 @@ namespace Rabbit\Chrome\Headless;
 use Rabbit\Base\App;
 use Swlib\Saber;
 
-/**
- * Class Chrome
- * @package addons\headless
- */
 class Chrome
 {
     private array $pages = [];
@@ -22,7 +18,6 @@ class Chrome
         $this->dsn = $dsn;
         $this->httpClient = $httpClient ?? Saber::create([
             'base_uri' => $dsn,
-            'use_pool' => true,
             'timeout' => $this->timeout
         ]);
     }
@@ -61,7 +56,13 @@ class Chrome
             }
         }
         if (!empty($emptypage)) {
-            return array_shift($emptypage);
+            $page = array_shift($emptypage);
+            if (!$page instanceof Page) {
+                $page['timeout'] = $this->timeout;
+                $page = new Page($page);
+                $this->pages[$page->id] = $page;
+                return $page;
+            }
         }
         if (null === $page = $autoOpen ? $this->open() : null) {
             return null;
@@ -71,13 +72,11 @@ class Chrome
 
     private function open(): ?Page
     {
-        App::debug("Opening new page");
         $response = $this->httpClient->post('/json/new');
         if ($response->getStatusCode() === 200) {
             $page = $response->getParsedJsonArray();
             $page['timeout'] = $this->timeout;
             $this->pages[$page['id']] = new Page($page);
-            App::debug("Opened new page");
             return $this->pages[$page['id']];
         }
         App::error("Open new page" . " failed error=" . (string)$response->getBody());
