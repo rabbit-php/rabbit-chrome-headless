@@ -54,7 +54,6 @@ class Chrome
                     $page['timeout'] = $this->timeout;
                     $page = new Page($page);
                     $this->pages[$page->id] = $page;
-                    $this->before($page);
                     return $page;
                 } elseif ($page['url'] === 'about:blank') {
                     $emptypage[] = $page;
@@ -67,7 +66,6 @@ class Chrome
         if (null === $page = $autoOpen ? $this->open() : null) {
             return null;
         }
-        $this->before($page);
         return $page;
     }
 
@@ -84,13 +82,6 @@ class Chrome
         }
         App::error("Open new page" . " failed error=" . (string)$response->getBody());
         return null;
-    }
-
-    private function before(Page $page): void
-    {
-        $page->execute('Page.enable');
-        $page->execute('Network.enable');
-        $page->execute('Runtime.enable');
     }
 
     public function version(): array
