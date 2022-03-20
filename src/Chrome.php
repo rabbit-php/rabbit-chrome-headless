@@ -31,12 +31,8 @@ class Chrome
     {
         if (empty($this->pages)) {
             $response = $this->httpClient->post('/json/list');
-            $pages = $response->getParsedJsonArray();
-            foreach ($pages as $page) {
-                if (!array_key_exists($page['id'], $this->pages)) {
-                    $page['timeout'] = $this->timeout;
-                    $this->pages[$page['id']] = new Page($page);
-                }
+            foreach ($response->getParsedJsonArray() ?? [] as $page) {
+                $this->pages[$page['id']] = $page;
             }
         }
         return $this->pages;
@@ -47,10 +43,22 @@ class Chrome
         $emptypage = [];
         $urlArr = explode(',', $url);
         foreach ($this->getPages() as $page) {
-            if (in_array(parse_url($page->url, PHP_URL_HOST), $urlArr)) {
-                return $page;
-            } elseif ($page->url === 'about:blank') {
-                $emptypage[] = $page;
+            if ($page instanceof Page) {
+                if (in_array(parse_url($page->url, PHP_URL_HOST), $urlArr)) {
+                    return $page;
+                } elseif ($page->url === 'about:blank') {
+                    $emptypage[] = $page;
+                }
+            } else {
+                if (in_array(parse_url($page['url'], PHP_URL_HOST), $urlArr)) {
+                    $page['timeout'] = $this->timeout;
+                    $page = new Page($page);
+                    $this->pages[$page->id] = $page;
+                    $this->before($page);
+                    return $page;
+                } elseif ($page['url'] === 'about:blank') {
+                    $emptypage[] = $page;
+                }
             }
         }
         if (!empty($emptypage)) {
@@ -59,10 +67,7 @@ class Chrome
         if (null === $page = $autoOpen ? $this->open() : null) {
             return null;
         }
-        $page->evaluate('Page.enable');
-        $page->evaluate('Network.enable');
-        $page->evaluate('Runtime.enable');
-        $page->evaluate('Page.setLifecycleEventsEnabled', ['enabled' => true]);
+        $this->before($page);
         return $page;
     }
 
@@ -79,6 +84,14 @@ class Chrome
         }
         App::error("Open new page" . " failed error=" . (string)$response->getBody());
         return null;
+    }
+
+    private function before(Page $page): void
+    {
+        $page->execute('Page.enable');
+        $page->execute('Network.enable');
+        $page->execute('Runtime.enable');
+        $page->execute('Page.setLifecycleEventsEnabled', ['enabled' => true]);
     }
 
     public function version(): array

@@ -142,25 +142,9 @@ class Page
         return $this;
     }
 
-    public function waitForNavigation(int $timeout = 30): ?array
+    public function waitForNavigation(string $evnet = 'Page.loadEventFired', int $timeout = 30): ?array
     {
-        $now = time();
-        while (time() - $now < $timeout) {
-            $flag = true;
-            foreach ($this->msgs as $msg) {
-                if ($msg->method === 'Page.navigate' || $msg->method === 'Page.reload') {
-                    if (null !== $ret = $msg->getResult()) {
-                        return $ret;
-                    }
-                    $flag = false;
-                }
-            }
-            if ($flag) {
-                break;
-            }
-            usleep(500 * 1000);
-        }
-        return null;
+        return $this->event($evnet, $timeout);
     }
 
     public function evaluate(string $expression): self
