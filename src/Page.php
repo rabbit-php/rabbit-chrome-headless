@@ -10,6 +10,7 @@ use Rabbit\Base\Exception\InvalidArgumentException;
 use RuntimeException;
 use Swlib\Saber;
 use Swlib\Saber\WebSocket;
+use Throwable;
 
 class Page
 {
@@ -128,7 +129,7 @@ class Page
                 return $data;
             }
         }
-        throw new RuntimeException("Awaiting event $method at {$timeout}s timeout, the {$i} times event is " . ($res->data['method'] ?? 'null'));
+        throw new RuntimeException("Awaiting event $method at {$timeout}s timeout, the {$i} times event is " . ($data['method'] ?? 'null'));
     }
 
     public function call(callable $callback, array $params)
@@ -144,7 +145,12 @@ class Page
 
     public function waitForNavigation(string $evnet = 'Page.loadEventFired', int $timeout = 30): ?array
     {
-        return $this->event($evnet, $timeout);
+        try {
+            return $this->event($evnet, $timeout);
+        } catch (Throwable $e) {
+            App::error($e->getMessage());
+        }
+        return null;
     }
 
     public function evaluate(string $expression): self
