@@ -91,7 +91,6 @@ class Chrome
         $page->execute('Page.enable');
         $page->execute('Network.enable');
         $page->execute('Runtime.enable');
-        $page->execute('Page.setLifecycleEventsEnabled', ['enabled' => true]);
     }
 
     public function version(): array
