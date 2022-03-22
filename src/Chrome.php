@@ -33,44 +33,17 @@ class Chrome
         return $this->pages;
     }
 
-    public function checkUrl(string $url, bool $autoOpen = true): ?page
+    public function createPage(): ?page
     {
-        $emptypage = [];
-        $urlArr = explode(',', $url);
         foreach ($this->getPages() as $page) {
-            if ($page instanceof Page) {
-                if (in_array(parse_url($page->url, PHP_URL_HOST), $urlArr)) {
-                    return $page;
-                } elseif ($page->url === 'about:blank') {
-                    $emptypage[] = $page;
-                }
-            } else {
-                if (in_array(parse_url($page['url'], PHP_URL_HOST), $urlArr)) {
-                    $page['timeout'] = $this->timeout;
-                    $page = new Page($page);
-                    $this->pages[$page->id] = $page;
-                    return $page;
-                } elseif ($page['url'] === 'about:blank') {
-                    $emptypage[] = $page;
-                }
-            }
-        }
-        if (!empty($emptypage)) {
-            $page = array_shift($emptypage);
             if (!$page instanceof Page) {
-                $page['timeout'] = $this->timeout;
-                $page = new Page($page);
-                $this->pages[$page->id] = $page;
-                return $page;
+                $this->closePageById($page['id']);
             }
         }
-        if (null === $page = $autoOpen ? $this->open() : null) {
-            return null;
-        }
-        return $page;
+        return $this->open();
     }
 
-    private function open(): ?Page
+    public function open(): ?Page
     {
         $response = $this->httpClient->post('/json/new');
         if ($response->getStatusCode() === 200) {
