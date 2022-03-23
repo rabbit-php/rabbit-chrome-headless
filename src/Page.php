@@ -175,8 +175,11 @@ class Page implements InitInterface
     public function waitForSelector(string $query, array $params = [], int $timeout = 30): ?Dom
     {
         $start = time();
+        if (!str_contains($query, 'document.querySelector')) {
+            $query = "document.querySelector('{$query}')";
+        }
         while (time() - $start < $timeout) {
-            $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => "document.querySelector('{$query}')"], $timeout)->getResult();
+            $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $query], $timeout)->getResult();
             if (($res['result']['type'] ?? false) && (!isset($res['result']['subtype']) || $res['result']['subtype'] !== 'null')) {
                 return new Dom($query, $this, $params);
             }

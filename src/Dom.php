@@ -24,13 +24,21 @@ class Dom
     public function __call($name, $arguments)
     {
         $args = empty($arguments) ? '()' : '(' . implode(',', $arguments) . ')';
-        $cmd = "document.querySelector('{$this->dom}').{$name}{$args}";
+        $cmd = $this->dom;
+        if (!str_contains($this->dom, 'document.querySelector')) {
+            $cmd = "document.querySelector('{$this->dom}')";
+        }
+        $cmd .= ".{$name}{$args}";
         return $this->run($cmd);
     }
 
     public function __get($name)
     {
-        $cmd = "document.querySelector('{$this->dom}').{$name}";
+        $cmd = $this->dom;
+        if (!str_contains($this->dom, 'document.querySelector')) {
+            $cmd = "document.querySelector('{$this->dom}')";
+        }
+        $cmd .= ".{$name}";
         return $this->run($cmd);
     }
 

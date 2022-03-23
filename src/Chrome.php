@@ -9,7 +9,6 @@ use Swlib\Saber;
 
 class Chrome
 {
-    private array $pages = [];
     private Saber $httpClient;
     private int $timeout = 30;
 
@@ -24,12 +23,13 @@ class Chrome
 
     public function getPages(): array
     {
+        $pages = [];
         foreach ($this->httpClient->post('/json/list')->getParsedJsonArray() ?? [] as $page) {
-            if (!($this->pages[$page['id']] ?? false) && in_array($page['type'], ['page', 'iframe'])) {
-                $this->pages[$page['id']] = $page;
+            if (in_array($page['type'], ['page', 'iframe'])) {
+                $pages[$page['id']] = $page;
             }
         }
-        return $this->pages;
+        return $pages;
     }
 
     public function createPage(): ?page
@@ -48,8 +48,7 @@ class Chrome
         if ($response->getStatusCode() === 200) {
             $page = $response->getParsedJsonArray();
             $page['timeout'] = $this->timeout;
-            $this->pages[$page['id']] = create(Page::class, ['attributes' => $page], false);
-            return $this->pages[$page['id']];
+            return create(Page::class, ['attributes' => $page], false);
         }
         App::error("Open new page" . " failed error=" . (string)$response->getBody());
         return null;
@@ -58,8 +57,7 @@ class Chrome
     public function buildPage(array $page): Page
     {
         $page['timeout'] = $this->timeout;
-        $this->pages[$page['id']] = create(Page::class, ['attributes' => $page], false);
-        return $this->pages[$page['id']];
+        return create(Page::class, ['attributes' => $page], false);
     }
 
     public function version(): array
@@ -78,7 +76,6 @@ class Chrome
     {
         $response = $this->httpClient->post("/json/close/{$id}");
         if ($response->getStatusCode() === 200) {
-            unset($this->pages[$id]);
             return true;
         }
         return false;
