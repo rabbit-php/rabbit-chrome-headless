@@ -24,9 +24,8 @@ class Chrome
 
     public function getPages(): array
     {
-        if (empty($this->pages)) {
-            $response = $this->httpClient->post('/json/list');
-            foreach ($response->getParsedJsonArray() ?? [] as $page) {
+        foreach ($this->httpClient->post('/json/list')->getParsedJsonArray() ?? [] as $page) {
+            if (!($this->pages[$page['id']] ?? false) && in_array($page['type'], ['page', 'iframe'])) {
                 $this->pages[$page['id']] = $page;
             }
         }
@@ -49,11 +48,18 @@ class Chrome
         if ($response->getStatusCode() === 200) {
             $page = $response->getParsedJsonArray();
             $page['timeout'] = $this->timeout;
-            $this->pages[$page['id']] = new Page($page);
+            $this->pages[$page['id']] = create(Page::class, ['attributes' => $page], false);
             return $this->pages[$page['id']];
         }
         App::error("Open new page" . " failed error=" . (string)$response->getBody());
         return null;
+    }
+
+    public function buildPage(array $page): Page
+    {
+        $page['timeout'] = $this->timeout;
+        $this->pages[$page['id']] = create(Page::class, ['attributes' => $page], false);
+        return $this->pages[$page['id']];
     }
 
     public function version(): array

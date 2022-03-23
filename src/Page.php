@@ -5,39 +5,67 @@ declare(strict_types=1);
 namespace Rabbit\Chrome\Headless;
 
 use Rabbit\Base\App;
-use Rabbit\Base\Core\Exception;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\Base\Core\Channel;
+use Rabbit\Base\Core\LoopControl;
 use Rabbit\Base\Exception\InvalidArgumentException;
-use RuntimeException;
 use Swlib\Saber;
 use Swlib\Saber\WebSocket;
-use Throwable;
 
-class Page
+class Page implements InitInterface
 {
     public int $timeout = 30;
 
-    private string $id;
-    private string $title;
-    private string $url;
-    private WebSocket $client;
-    private string $webSocketDebuggerUrl;
-    private string $devtoolsFrontendUrl;
-    private ?string $description = null;
-    private string $type;
-    private ?string $faviconUrl = null;
+    public readonly string $id;
+    public readonly string $title;
+    public readonly string $url;
+    public readonly string $webSocketDebuggerUrl;
+    public readonly string $devtoolsFrontendUrl;
+    public readonly ?string $description;
+    public readonly string $type;
+    public readonly ?string $faviconUrl;
 
     private array $msgs = [];
+    private array $listens = [];
+    private readonly WebSocket $client;
+    private LoopControl $lc;
+    private Channel $channel;
+    private int $wait = 0;
 
     public function __construct(array $attributes)
     {
         foreach ($attributes as $name => $value) {
             $this->$name = $value;
         }
+
+        $this->channel = new Channel();
+    }
+
+    public function init(): void
+    {
         $this->client = Saber::websocket(str_replace(
             ['http', 'https'],
             ['ws', 'wss'],
             $this->webSocketDebuggerUrl
         ));
+        $this->lc = loop(function () {
+            $res = $this->client->recv();
+            if ($res === false) {
+                return;
+            }
+            $data = json_decode($res->data, true);
+            if ($data['error'] ?? false) {
+                App::error(json_encode($data['error']));
+            } elseif ((false !== $id = $data['id'] ?? false) && ($msg = $this->msgs[$id] ?? false)) {
+                $msg->setResult($data);
+            } elseif ($method = $data['method'] ?? false) {
+                if ($func = $this->listens[$method] ?? false) {
+                    $func($data['params'] ?? null);
+                } elseif ($this->wait > 0) {
+                    $this->channel->push($data);
+                }
+            }
+        });
     }
 
     public function __get($name)
@@ -67,62 +95,30 @@ class Page
         }
     }
 
+    public function on(string $event, callable $func): void
+    {
+        $this->listens[$event] = $func;
+    }
+
     public function __destruct()
     {
         if ($this->client !== null) {
             $this->client->close();
         }
+        $this->lc->shutdown();
+        $this->channel->close();
     }
 
-    public function execute(string $method, array $params = []): ?Message
+    public function execute(string $method, array $params = [], ?int $timeout = null): Message
     {
         $msg = new Message($method, $params);
+        $this->msgs[$msg->id] = $msg;
         $data = (string)$msg;
-        App::debug("Execute $method with params=$data", "Headless");
         $this->client->push($data);
-        $start = time();
-        while (time() - $start < $this->timeout) {
-            $res = $this->client->recv($this->timeout);
-            if ($res === false) {
-                App::error("Execute $method return false!", "Headless");
-                throw new Exception("Execute $method return false!");
-            }
-            $data = json_decode($res->data, true);
-            if (isset($data['error'])) {
-                App::error("Execute $method error msg=$res->data", "Headless");
-            }
-            if (isset($data['id']) && $data['id'] === $msg->id) {
-                $msg->setResult($data);
-                App::debug("Finish $method with result=$res->data", "Headless");
-                return $msg;
-            }
-        }
-        throw new RuntimeException("Awaiting execute $method at {$this->timeout}s timeout");
-    }
-
-    public function event(string $method, int $timeout = null): array
-    {
-        App::debug("Start awaiting event $method...");
-        $i = 0;
-        $start = time();
         $timeout = $timeout ?? $this->timeout;
-        while (time() - $start < $timeout) {
-            $i++;
-            $res = $this->client->recv($timeout);
-            if ($res === false) {
-                throw new Exception("Awaiting event $method return false!");
-            }
-            $data = json_decode($res->data, true);
-            if (isset($data['error'])) {
-                throw new Exception("Awaiting event $method error msg=$res->data");
-            }
-
-            if (($data['method'] ?? false) && $data['method'] === $method) {
-                App::debug("Finish awaiting event $method");
-                return $data;
-            }
-        }
-        throw new RuntimeException("Awaiting event $method at {$timeout}s timeout, the {$i} times event is " . ($data['method'] ?? 'null'));
+        $msg->channel->pop($timeout);
+        unset($this->msgs[$msg->id]);
+        return $msg;
     }
 
     public function call(callable $callback, array $params)
@@ -136,29 +132,35 @@ class Page
         return $this;
     }
 
-    public function waitForNavigation(string $evnet = 'Page.loadEventFired', int $timeout = 30): ?array
+    public function waitForNavigation(string $event = 'Page.loadEventFired', int $timeout = 30): ?array
     {
-        try {
-            return $this->event($evnet, $timeout);
-        } catch (Throwable $e) {
-            App::error($e->getMessage());
+        $this->wait = $timeout;
+        while (true) {
+            $ret = $this->channel->pop($timeout);
+            if ($ret === false) {
+                $this->wait = 0;
+                return null;
+            }
+            if ($ret['method'] === $event) {
+                $this->wait = 0;
+                return $ret;
+            }
         }
-        return null;
     }
 
-    public function evaluate(string $expression): self
+    public function evaluate(string $expression, array $params = [], int $timeout = null): self
     {
-        $this->execute("Runtime.evaluate", ['expression' => $expression]);
+        $this->execute("Runtime.evaluate", [...$params, 'expression' => $expression], $timeout);
         return $this;
     }
 
-    public function content(string $cmd = 'document.documentElement.innerHTML', int $wait = 0): ?string
+    public function content(string $cmd = 'document.documentElement.innerHTML', array $params = [], int $wait = 0): ?string
     {
         if ($wait > 0) {
             $now = time();
             while (time() - $now < $wait) {
-                $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
-                if ($ret = $res->getResult()['result']['value'] ?? false) {
+                $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $cmd], $wait)->getResult();
+                if ($ret = $res['result']['value'] ?? null) {
                     return $ret;
                 }
                 usleep(500 * 1000);
@@ -170,13 +172,13 @@ class Page
         }
     }
 
-    public function waitForSelector(string $query, int $timeout = 30): ?Dom
+    public function waitForSelector(string $query, array $params = [], int $timeout = 30): ?Dom
     {
         $start = time();
         while (time() - $start < $timeout) {
-            $res = $this->execute("Runtime.evaluate", ['expression' => "document.querySelector('{$query}')"])->getResult();
-            if ($res['result']['type'] ?? false) {
-                return new Dom($query, $this);
+            $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => "document.querySelector('{$query}')"], $timeout)->getResult();
+            if (($res['result']['type'] ?? false) && (!isset($res['result']['subtype']) || $res['result']['subtype'] !== 'null')) {
+                return new Dom($query, $this, $params);
             }
             usleep(500 * 1000);
         }
