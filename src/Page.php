@@ -27,9 +27,9 @@ class Page implements InitInterface
 
     private array $msgs = [];
     private array $listens = [];
-    private readonly WebSocket $client;
-    private LoopControl $lc;
-    private Channel $channel;
+    private ?WebSocket $client = null;
+    private ?LoopControl $lc = null;
+    private ?Channel $channel = null;
     private int $wait = 0;
 
     public function __construct(array $attributes)
@@ -102,11 +102,23 @@ class Page implements InitInterface
 
     public function __destruct()
     {
+        $this->close();
+    }
+
+    public function close(): void
+    {
         if ($this->client !== null) {
             $this->client->close();
+            $this->client = null;
         }
-        $this->lc->shutdown();
-        $this->channel->close();
+        if ($this->lc !== null) {
+            $this->lc->shutdown();
+            $this->lc = null;
+        }
+        if ($this->channel !== null) {
+            $this->channel->close();
+            $this->channel = null;
+        }
     }
 
     public function execute(string $method, array $params = [], ?int $timeout = null): Message
