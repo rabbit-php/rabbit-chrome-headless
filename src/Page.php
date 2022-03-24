@@ -172,7 +172,7 @@ class Page implements InitInterface
             $now = time();
             while (time() - $now < $wait) {
                 $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $cmd], $wait)->getResult();
-                if (($ret = $res['result']['value'] ?? null) && $ret !== '') {
+                if ($ret = $res['result']['value'] ?? null) {
                     return $ret;
                 }
                 usleep(500 * 1000);
@@ -182,6 +182,26 @@ class Page implements InitInterface
             $res = $this->execute("Runtime.evaluate", ['expression' => $cmd]);
             return $res->getResult()['result']['value'] ?? null;
         }
+    }
+
+    public function watiValue(string $cmd, null|array|string $value, array $params = [], int $timeout = 30): bool
+    {
+        $now = time();
+        while (time() - $now < $timeout) {
+            $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $cmd], $timeout)->getResult();
+            $ret = $res['result']['value'] ?? null;
+            if (is_array($value)) {
+                if (in_array($ret, $value)) {
+                    return true;
+                }
+            } else {
+                if ($ret === $value) {
+                    return true;
+                }
+            }
+            usleep(500 * 1000);
+        }
+        return false;
     }
 
     public function waitForSelector(string $query, array $params = [], int $timeout = 30): ?Dom
