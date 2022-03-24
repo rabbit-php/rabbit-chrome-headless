@@ -172,7 +172,7 @@ class Page implements InitInterface
             $now = time();
             while (time() - $now < $wait) {
                 $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $cmd], $wait)->getResult();
-                if ($ret = $res['result']['value'] ?? null) {
+                if (($ret = $res['result']['value'] ?? null) && $ret !== '') {
                     return $ret;
                 }
                 usleep(500 * 1000);
