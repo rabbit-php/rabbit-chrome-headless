@@ -184,19 +184,19 @@ class Page implements InitInterface
         }
     }
 
-    public function watiValue(string $cmd, null|array|string $value, array $params = [], int $timeout = 30): bool
+    public function waitValue(string $cmd, null|array|string $value, bool $type = true, array $params = [], int $timeout = 30): null|bool|string
     {
         $now = time();
         while (time() - $now < $timeout) {
             $res = $this->execute("Runtime.evaluate", [...$params, 'expression' => $cmd], $timeout)->getResult();
             $ret = $res['result']['value'] ?? null;
             if (is_array($value)) {
-                if (in_array($ret, $value)) {
-                    return true;
+                if (in_array($ret, $value) === $type) {
+                    return $ret;
                 }
             } else {
-                if ($ret === $value) {
-                    return true;
+                if (($ret === $value) === $type) {
+                    return $ret;
                 }
             }
             usleep(500 * 1000);
@@ -226,14 +226,17 @@ class Page implements InitInterface
         return $this;
     }
 
-    public function navigateOrReload(string $url, bool $ignoreCache = true, bool $auto = true): self
+    public function navigateOrReload(string $url = null, bool $ignoreCache = true, bool $auto = true): self
     {
-        if ($this->url !== $url) {
-            return $this->navigate($url);
-        } elseif ($auto) {
-            return $this;
-        } else {
+        if ($url === null) {
             return $this->reload($ignoreCache);
         }
+        if ($this->url !== $url) {
+            return $this->navigate($url);
+        }
+        if ($auto) {
+            return $this;
+        }
+        return $this->reload($ignoreCache);
     }
 }
