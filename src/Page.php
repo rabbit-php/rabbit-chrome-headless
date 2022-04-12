@@ -11,6 +11,7 @@ use Rabbit\Base\Core\LoopControl;
 use Rabbit\Base\Exception\InvalidArgumentException;
 use Swlib\Saber;
 use Swlib\Saber\WebSocket;
+use Throwable;
 
 class Page implements InitInterface
 {
@@ -126,11 +127,20 @@ class Page implements InitInterface
         $msg = new Message($method, $params);
         $this->msgs[$msg->id] = $msg;
         $data = (string)$msg;
-        $this->client->push($data);
-        $timeout = $timeout ?? $this->timeout;
-        $msg->channel->pop($timeout);
-        unset($this->msgs[$msg->id]);
-        return $msg;
+        $retry = 3;
+        while ($retry--) {
+            try {
+                $this->client->push($data);
+                $timeout = $timeout ?? $this->timeout;
+                $msg->channel->pop($timeout);
+                unset($this->msgs[$msg->id]);
+                return $msg;
+            } catch (Throwable $e) {
+                App::error($e->getMessage());
+                usleep(100);
+            }
+        }
+        throw $e;
     }
 
     public function call(callable $callback, array $params)
