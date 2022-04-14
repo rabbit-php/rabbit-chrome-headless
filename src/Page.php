@@ -131,13 +131,19 @@ class Page implements InitInterface
         while ($retry--) {
             try {
                 $this->client->push($data);
-                $timeout = $timeout ?? $this->timeout;
+                $timeout ??= $this->timeout;
                 $msg->channel->pop($timeout);
                 unset($this->msgs[$msg->id]);
                 return $msg;
             } catch (Throwable $e) {
                 App::error($e->getMessage());
                 usleep(100);
+                $this->client->close();
+                $this->client = Saber::websocket(str_replace(
+                    ['http', 'https'],
+                    ['ws', 'wss'],
+                    $this->webSocketDebuggerUrl
+                ));
             }
         }
         throw $e;
