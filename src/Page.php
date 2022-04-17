@@ -9,6 +9,7 @@ use Rabbit\Base\Contract\InitInterface;
 use Rabbit\Base\Core\Channel;
 use Rabbit\Base\Core\LoopControl;
 use Rabbit\Base\Exception\InvalidArgumentException;
+use RuntimeException;
 use Swlib\Saber;
 use Swlib\Saber\WebSocket;
 use Throwable;
@@ -130,14 +131,16 @@ class Page implements InitInterface
         $retry = 3;
         while ($retry--) {
             try {
-                $this->client->push($data);
+                if (false === $this->client->push($data)) {
+                    throw new RuntimeException(socket_strerror($this->client->errCode));
+                }
                 $timeout ??= $this->timeout;
                 $msg->channel->pop($timeout);
                 unset($this->msgs[$msg->id]);
                 return $msg;
             } catch (Throwable $e) {
                 App::error($e->getMessage());
-                usleep(100);
+                sleep(1);
                 $this->client->close();
                 $this->client = Saber::websocket(str_replace(
                     ['http', 'https'],
