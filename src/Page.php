@@ -43,13 +43,20 @@ class Page implements InitInterface
         $this->channel = new Channel();
     }
 
-    public function init(): void
+    private function buildClient(): void
     {
         $this->client = Saber::websocket(str_replace(
             ['http', 'https'],
             ['ws', 'wss'],
             $this->webSocketDebuggerUrl
         ));
+    }
+
+    public function init(): void
+    {
+        if ($this->client === null) {
+            $this->buildClient();
+        }
         $this->lc = loop(function () {
             $res = $this->client->recv();
             if ($res === false) {
@@ -130,6 +137,9 @@ class Page implements InitInterface
         $data = (string)$msg;
         $retry = 3;
         while ($retry--) {
+            if ($this->client === null) {
+                $this->buildClient();
+            }
             try {
                 if (false === $this->client->push($data)) {
                     throw new RuntimeException(socket_strerror($this->client->errCode));
@@ -142,11 +152,7 @@ class Page implements InitInterface
                 App::error($e->getMessage());
                 sleep(1);
                 $this->client->close();
-                $this->client = Saber::websocket(str_replace(
-                    ['http', 'https'],
-                    ['ws', 'wss'],
-                    $this->webSocketDebuggerUrl
-                ));
+                $this->buildClient();
             }
         }
         throw $e;
