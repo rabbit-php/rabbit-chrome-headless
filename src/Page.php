@@ -142,7 +142,7 @@ class Page implements InitInterface
             }
             try {
                 if (false === $this->client->push($data)) {
-                    throw new RuntimeException(socket_strerror($this->client->errCode));
+                    throw new RuntimeException("push data error");
                 }
                 $timeout ??= $this->timeout;
                 $msg->channel->pop($timeout);
