@@ -60,6 +60,7 @@ class Page implements InitInterface
         $this->lc = loop(function () {
             $res = $this->client->recv();
             if ($res === false) {
+                sleep(1);
                 return;
             }
             $data = json_decode($res->data, true);
