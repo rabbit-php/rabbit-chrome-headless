@@ -211,7 +211,7 @@ class Page implements InitInterface
         }
     }
 
-    public function waitValue(string $cmd, null|array|string $value, bool $type = true, array $params = [], int $timeout = 30): null|bool|string
+    public function waitValue(string $cmd, null|array|string $value, bool $type = true, array $params = [], int $timeout = 30): null|bool|string|array
     {
         $now = time();
         while (time() - $now < $timeout) {
