@@ -45,6 +45,10 @@ class Page implements InitInterface
 
     private function buildClient(): void
     {
+        if ($this->client !== null) {
+            $this->client->close();
+            $this->client = null;
+        }
         $this->client = Saber::websocket(str_replace(
             ['http', 'https'],
             ['ws', 'wss'],
@@ -54,10 +58,10 @@ class Page implements InitInterface
 
     public function init(): void
     {
-        if ($this->client === null) {
-            $this->buildClient();
-        }
         $this->lc = loop(function () {
+            if ($this->client === null) {
+                $this->buildClient();
+            }
             $res = $this->client?->recv();
             if ($res === false || $res === null) {
                 sleep(1);
@@ -138,11 +142,9 @@ class Page implements InitInterface
         $data = (string)$msg;
         $retry = 3;
         while ($retry--) {
-            if ($this->client === null) {
-                $this->buildClient();
-            }
             try {
-                if (false === $this->client->push($data)) {
+                $ret = $this->client?->push($data);
+                if ($ret === false || $ret === null) {
                     throw new RuntimeException("push data error");
                 }
                 $timeout ??= $this->timeout;
@@ -152,7 +154,6 @@ class Page implements InitInterface
             } catch (Throwable $e) {
                 App::error($e->getMessage());
                 sleep(1);
-                $this->client->close();
                 $this->buildClient();
             }
         }
