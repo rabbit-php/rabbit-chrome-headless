@@ -58,10 +58,10 @@ class Page implements InitInterface
 
     public function init(): void
     {
+        if ($this->client === null) {
+            $this->buildClient();
+        }
         $this->lc = loop(function () {
-            if ($this->client === null) {
-                $this->buildClient();
-            }
             $res = $this->client?->recv();
             if ($res === false || $res === null) {
                 sleep(1);
