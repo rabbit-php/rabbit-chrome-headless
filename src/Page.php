@@ -74,7 +74,7 @@ class Page implements InitInterface
                 $msg->setResult($data);
             } elseif ($method = $data['method'] ?? false) {
                 if ($func = $this->listens[$method] ?? false) {
-                    $func($data['params'] ?? null);
+                    $func($data['params'] ?? null, $this);
                 } elseif ($this->wait > 0) {
                     $this->channel->push($data);
                 }
